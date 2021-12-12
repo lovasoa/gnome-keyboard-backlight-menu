@@ -29,14 +29,14 @@ const Slider = imports.ui.slider;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Main = imports.ui.main;
 
-const setTimeout = function (func, delay, ...args) {
+function setTimeout(func, delay, ...args) {
     return GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
         func(...args);
         return GLib.SOURCE_REMOVE;
     });
 };
 
-const clearTimeout = GLib.source_remove;
+function clearTimeout(timeout) { GLib.source_remove(timeout); };
 
 class KbdBrightnessProxy {
     constructor(callback) {
@@ -135,7 +135,7 @@ const Indicator = GObject.registerClass(
                 if (this.changeSliderTimeout) clearTimeout(this.changeSliderTimeout);
                 let dt = this.lastChange + 1000 - Date.now();
                 if (dt < 0) dt = 0;
-                this.changeSliderTimeout = setTimeout(this._changeSlider.bind(this), dt, this._proxy.Brightness);
+                this.changeSliderTimeout = setTimeout(_ => this._changeSlider(this._proxy.Brightness), dt);
             }
         }
     });

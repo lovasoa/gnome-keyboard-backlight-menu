@@ -26,9 +26,11 @@ const { Gio, GLib, GObject, St } = imports.gi;
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
 const Slider = imports.ui.slider;
+const Main = imports.ui.main;
 
 const ExtensionUtils = imports.misc.extensionUtils;
-const Main = imports.ui.main;
+const _ = ExtensionUtils.gettext;
+const Me = ExtensionUtils.getCurrentExtension();
 
 function setTimeout(func, delay, ...args) {
     return GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
@@ -78,8 +80,6 @@ class KbdBrightnessProxy {
         return this._proxy.GetMaxBrightnessSync();
     }
 }
-
-const _ = ExtensionUtils.gettext;
 
 const Indicator = GObject.registerClass(
     class Indicator extends PanelMenu.SystemIndicator {
@@ -136,28 +136,29 @@ const Indicator = GObject.registerClass(
                 if (this.changeSliderTimeout) clearTimeout(this.changeSliderTimeout);
                 let dt = this.lastChange + 1000 - Date.now();
                 if (dt < 0) dt = 0;
-                this.changeSliderTimeout = setTimeout(_ => this._changeSlider(this._proxy.Brightness), dt);
+                this.changeSliderTimeout = setTimeout(_ => {
+                    this.changeSliderTimeout = null;
+                    this._changeSlider(this._proxy.Brightness)
+                }, dt);
             }
         }
     });
 
-class Extension {
-    constructor(uuid) {
-        this._uuid = uuid;
-        ExtensionUtils.initTranslations(GETTEXT_DOMAIN);
-    }
+var _indicator;
 
-    enable() {
-        this._indicator = new Indicator();
-        Main.panel.statusArea.aggregateMenu.menu.addMenuItem(this._indicator.menu, 2);
-    }
-
-    disable() {
-        this._indicator.destroy();
-        this._indicator = null;
-    }
+function init() {
+    ExtensionUtils.initTranslations(GETTEXT_DOMAIN);
 }
 
-function init(meta) {
-    return new Extension(meta.uuid);
+function enable() {
+    _indicator = new Indicator();
+    Main.panel.statusArea.aggregateMenu.menu.addMenuItem(this._indicator.menu, 2);
+}
+
+function disable() {
+    log('disable keyboard-backlight-menu');
+    if (_indicator) {
+        _indicator.destroy();
+        _indicator = null;
+    }
 }

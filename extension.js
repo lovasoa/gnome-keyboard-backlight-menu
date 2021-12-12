@@ -144,6 +144,7 @@ const Indicator = GObject.registerClass(
         }
 
         destroy() {
+            if (this.changeSliderTimeout) clearTimeout(this.changeSliderTimeout);
             this.menu.destroy();
             super.destroy();
         }

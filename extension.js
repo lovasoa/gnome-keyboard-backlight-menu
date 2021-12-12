@@ -142,6 +142,11 @@ const Indicator = GObject.registerClass(
                 }, dt);
             }
         }
+
+        destroy() {
+            this.menu.destroy();
+            super.destroy();
+        }
     });
 
 var _indicator;

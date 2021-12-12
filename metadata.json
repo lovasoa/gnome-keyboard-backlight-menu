@@ -2,6 +2,7 @@
   "name": "Keyboard Backlight Slider",
   "description": "Allow setting the keyboard backlight brightness with a slider in the main menu",
   "uuid": "keyboard-backlight-menu@ophir.dev",
+  "url": "https://github.com/lovasoa/gnome-keyboard-backlight-menu",
   "shell-version": [
     "41"
   ]

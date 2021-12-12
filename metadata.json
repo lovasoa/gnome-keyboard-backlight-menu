@@ -1,4 +1,5 @@
 {
+  "version": 2,
   "name": "Keyboard Backlight Slider",
   "description": "Allow setting the keyboard backlight brightness with a slider in the main menu",
   "uuid": "keyboard-backlight-menu@ophir.dev",

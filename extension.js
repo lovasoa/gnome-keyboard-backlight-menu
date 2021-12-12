@@ -161,9 +161,6 @@ function enable() {
 }
 
 function disable() {
-    log('disable keyboard-backlight-menu');
-    if (_indicator) {
-        _indicator.destroy();
-        _indicator = null;
-    }
+    _indicator.destroy();
+    _indicator = null;
 }

@@ -17,6 +17,7 @@
  */
 
 /* exported init */
+"use strict";
 
 const GETTEXT_DOMAIN = 'keyboard-backlight-menu';
 

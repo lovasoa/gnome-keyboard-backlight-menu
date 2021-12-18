@@ -19,27 +19,12 @@
 /* exported init */
 "use strict";
 
-const GETTEXT_DOMAIN = 'keyboard-backlight-menu';
-
 const { Gio, GLib, GObject, St } = imports.gi;
 
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
 const Slider = imports.ui.slider;
 const Main = imports.ui.main;
-
-const ExtensionUtils = imports.misc.extensionUtils;
-const _ = ExtensionUtils.gettext;
-const Me = ExtensionUtils.getCurrentExtension();
-
-function setTimeout(func, delay, ...args) {
-    return GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
-        func(...args);
-        return GLib.SOURCE_REMOVE;
-    });
-};
-
-function clearTimeout(timeout) { GLib.source_remove(timeout); };
 
 class KbdBrightnessProxy {
     constructor(callback) {
@@ -97,7 +82,7 @@ const Indicator = GObject.registerClass(
             this._slider = new Slider.Slider(0);
             this._sliderChangedId = this._slider.connect('notify::value',
                 this._sliderChanged.bind(this));
-            this._slider.accessible_name = _("Keyboard brightness");
+            this._slider.accessible_name = "Keyboard brightness";
 
             let icon = new St.Icon({
                 icon_name: 'keyboard-brightness-symbolic',
@@ -133,28 +118,25 @@ const Indicator = GObject.registerClass(
             let visible = this._proxy.Brightness >= 0;
             this._item.visible = visible;
             if (visible) {
-                if (this.changeSliderTimeout) clearTimeout(this.changeSliderTimeout);
+                if (this.changeSliderTimeout) GLib.source_remove(this.changeSliderTimeout);
                 let dt = this.lastChange + 1000 - Date.now();
                 if (dt < 0) dt = 0;
-                this.changeSliderTimeout = setTimeout(_ => {
+                this.changeSliderTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, dt, () => {
                     this.changeSliderTimeout = null;
                     this._changeSlider(this._proxy.Brightness)
-                }, dt);
+                    return GLib.SOURCE_REMOVE;
+                })
             }
         }
 
         destroy() {
-            if (this.changeSliderTimeout) clearTimeout(this.changeSliderTimeout);
+            if (this.changeSliderTimeout) GLib.source_remove(this.changeSliderTimeout);
             this.menu.destroy();
             super.destroy();
         }
     });
 
 var _indicator;
-
-function init() {
-    ExtensionUtils.initTranslations(GETTEXT_DOMAIN);
-}
 
 function enable() {
     _indicator = new Indicator();

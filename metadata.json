@@ -6,6 +6,7 @@
   "url": "https://github.com/lovasoa/gnome-keyboard-backlight-menu",
   "shell-version": [
     "40",
-    "41"
+    "41",
+    "42"
   ]
 }

@@ -26,6 +26,21 @@ const PopupMenu = imports.ui.popupMenu;
 const Slider = imports.ui.slider;
 const Main = imports.ui.main;
 
+const ExtensionUtils = imports.misc.extensionUtils;
+const Me = ExtensionUtils.getCurrentExtension();
+const Gettext = imports.gettext;
+const Domain = Gettext.domain(Me.metadata.uuid);
+const _ = Domain.gettext;
+
+function setTimeout(func, delay, ...args) {
+    return GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
+        func(...args);
+        return GLib.SOURCE_REMOVE;
+    });
+};
+
+function clearTimeout(timeout) { GLib.source_remove(timeout); };
+
 class KbdBrightnessProxy {
     constructor(callback) {
         const BrightnessProxy = Gio.DBusProxy.makeProxyWrapper(`
@@ -58,6 +73,7 @@ class KbdBrightnessProxy {
 
     set Brightness(value) {
         const brightness = Math.round(value * this.getMaxBrightness());
+        log(`Setting brightness to ${brightness}`);
         this._proxy.SetBrightnessSync(brightness);
     }
 
@@ -82,7 +98,7 @@ const Indicator = GObject.registerClass(
             this._slider = new Slider.Slider(0);
             this._sliderChangedId = this._slider.connect('notify::value',
                 this._sliderChanged.bind(this));
-            this._slider.accessible_name = "Keyboard brightness";
+            this._slider.accessible_name = _("Keyboard brightness");
 
             let icon = new St.Icon({
                 icon_name: 'keyboard-brightness-symbolic',
@@ -118,25 +134,29 @@ const Indicator = GObject.registerClass(
             let visible = this._proxy.Brightness >= 0;
             this._item.visible = visible;
             if (visible) {
-                if (this.changeSliderTimeout) GLib.source_remove(this.changeSliderTimeout);
+                if (this.changeSliderTimeout) clearTimeout(this.changeSliderTimeout);
                 let dt = this.lastChange + 1000 - Date.now();
                 if (dt < 0) dt = 0;
-                this.changeSliderTimeout = GLib.timeout_add(GLib.PRIORITY_DEFAULT, dt, () => {
+                this.changeSliderTimeout = setTimeout(_ => {
                     this.changeSliderTimeout = null;
                     this._changeSlider(this._proxy.Brightness)
-                    return GLib.SOURCE_REMOVE;
-                })
+                }, dt);
             }
         }
 
         destroy() {
-            if (this.changeSliderTimeout) GLib.source_remove(this.changeSliderTimeout);
+            if (this.changeSliderTimeout) clearTimeout(this.changeSliderTimeout);
             this.menu.destroy();
             super.destroy();
         }
     });
 
 var _indicator;
+
+function init() {
+    log(`initializing ${Me.metadata.name}`);
+    ExtensionUtils.initTranslations(Me.metadata.uuid);
+}
 
 function enable() {
     _indicator = new Indicator();

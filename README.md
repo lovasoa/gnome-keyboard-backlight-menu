@@ -10,3 +10,10 @@ Set the keyboard backlight brightness with a slider in gnome shell's system menu
 </table>
 
 This extension adds a third slider below the sound and brightness sliders in the system menu to control the keyboard backlight.
+
+## Changelog
+
+### v5
+
+ - Fixed compatibility with ubuntu
+ - better logging

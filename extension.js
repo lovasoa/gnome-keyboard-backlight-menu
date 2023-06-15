@@ -19,27 +19,13 @@
 /* exported init */
 "use strict";
 
-const { Gio, GLib, GObject, St } = imports.gi;
+const {Gio, GObject} = imports.gi;
 
-const PanelMenu = imports.ui.panelMenu;
-const PopupMenu = imports.ui.popupMenu;
-const Slider = imports.ui.slider;
-const Main = imports.ui.main;
+const QuickSettings = imports.ui.quickSettings;
 
-const ExtensionUtils = imports.misc.extensionUtils;
-const Me = ExtensionUtils.getCurrentExtension();
-const Gettext = imports.gettext;
-const Domain = Gettext.domain(Me.metadata.uuid);
-const _ = Domain.gettext;
+// This is the live instance of the Quick Settings menu
+const QuickSettingsMenu = imports.ui.main.panel.statusArea.quickSettings;
 
-function setTimeout(func, delay, ...args) {
-    return GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
-        func(...args);
-        return GLib.SOURCE_REMOVE;
-    });
-};
-
-function clearTimeout(timeout) { GLib.source_remove(timeout); };
 
 class KbdBrightnessProxy {
     constructor(callback) {
@@ -82,88 +68,70 @@ class KbdBrightnessProxy {
     }
 }
 
-const Indicator = GObject.registerClass(
-    class Indicator extends PanelMenu.SystemIndicator {
+
+const FeatureIndicator = GObject.registerClass(
+    class FeatureIndicator extends QuickSettings.SystemIndicator {
         _init() {
             super._init();
-            this._proxy = new KbdBrightnessProxy((proxy, error) => {
-                if (error) throw error;
-                proxy.connectSignal('BrightnessChanged', this._sync.bind(this));
-                this._sync();
+
+            // Create the slider and associate it with the indicator, being sure to
+            // destroy it along with the indicator
+            this.quickSettingsItems.push(new FeatureSlider());
+
+            this.connect('destroy', () => {
+                this.quickSettingsItems.forEach(item => item.destroy());
             });
 
-            this._item = new PopupMenu.PopupBaseMenuItem({ activate: false });
-            this.menu.addMenuItem(this._item);
+            // Add the indicator to the panel
+            QuickSettingsMenu._indicators.add_child(this);
 
-            this._slider = new Slider.Slider(0);
-            this._sliderChangedId = this._slider.connect('notify::value',
-                this._sliderChanged.bind(this));
-            this._slider.accessible_name = _("Keyboard brightness");
 
-            let icon = new St.Icon({
-                icon_name: 'keyboard-brightness-symbolic',
-                style_class: 'popup-menu-icon'
-            });
-            this._item.add(icon);
-            this._item.add_child(this._slider);
-            this._item.connect('button-press-event', (actor, event) => {
-                return this._slider.startDragging(event);
-            });
-            this._item.connect('key-press-event', (actor, event) => {
-                return this._slider.emit('key-press-event', event);
-            });
-            this._item.connect('scroll-event', (actor, event) => {
-                return this._slider.emit('scroll-event', event);
-            });
-            this.lastChange = Date.now();
-            this.changeSliderTimeout = null;
-        }
-
-        _sliderChanged() {
-            this.lastChange = Date.now();
-            this._proxy.Brightness = this._slider.value;
-        }
-
-        _changeSlider(value) {
-            this._slider.block_signal_handler(this._sliderChangedId);
-            this._slider.value = value;
-            this._slider.unblock_signal_handler(this._sliderChangedId);
-        }
-
-        _sync() {
-            let visible = this._proxy.Brightness >= 0;
-            this._item.visible = visible;
-            if (visible) {
-                if (this.changeSliderTimeout) clearTimeout(this.changeSliderTimeout);
-                let dt = this.lastChange + 1000 - Date.now();
-                if (dt < 0) dt = 0;
-                this.changeSliderTimeout = setTimeout(_ => {
-                    this.changeSliderTimeout = null;
-                    this._changeSlider(this._proxy.Brightness)
-                }, dt);
-            }
-        }
-
-        destroy() {
-            if (this.changeSliderTimeout) clearTimeout(this.changeSliderTimeout);
-            this.menu.destroy();
-            super.destroy();
+            // Add the slider to the menu, passing `2` as the second
+            // argument to ensure the slider spans both columns of the menu
+            QuickSettingsMenu._addItems(this.quickSettingsItems, 2);
         }
     });
 
-var _indicator;
+const FeatureSlider = GObject.registerClass(
+    class FeatureSlider extends QuickSettings.QuickSlider {
+        _init() {
+            super._init({
+                iconName: 'keyboard-brightness-symbolic',
+            });
+
+            this._sliderChangedId = this.slider.connect('notify::value',
+                this._onSliderChanged.bind(this));
+
+            this.slider.accessible_name = 'Keyboard Brightness';
+
+            // create instance of KbpBrightnessProxy
+            this._proxy = new KbdBrightnessProxy((proxy, error) => {
+                if (error) throw error;
+                // proxy.connectSignal('BrightnessChanged', this._sync.bind(this));
+                // this._sync();
+            });
+        }
+
+        _onSliderChanged() {
+            this._proxy.Brightness = this.slider.value;
+        }
+    });
+
+class Extension {
+    constructor() {
+        this._indicator = null;
+    }
+
+    enable() {
+        this._indicator = new FeatureIndicator();
+    }
+
+    disable() {
+        this._indicator.destroy();
+        this._indicator = null;
+    }
+}
 
 function init() {
-    log(`initializing ${Me.metadata.name}`);
-    ExtensionUtils.initTranslations(Me.metadata.uuid);
-}
-
-function enable() {
-    _indicator = new Indicator();
-    Main.panel.statusArea.aggregateMenu.menu.addMenuItem(this._indicator.menu, 2);
-}
-
-function disable() {
-    _indicator.destroy();
-    _indicator = null;
+    return new Extension();
 }
